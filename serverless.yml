@@ -1,0 +1,72 @@
+
+service: dynamodb-service
+app: dynamodb-service
+org: jasonoats
+
+plugins:
+  localPath: './'
+  modules:
+    - index.js
+    - serverless-s3-deploy
+
+custom:
+  tableName: users-table
+  bucketName: input-data
+  assets:
+    auto: true
+    targets:
+      - bucket:
+          Ref: InputBucket
+        files:
+          - source: ./
+            globs: 'generated.json'
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:BatchWrite
+        - dynamodb:BatchWriteItem
+      Resource:
+        - { "Fn::GetAtt": ["TestDynamoDBTable", "Arn" ] }
+  environment:
+    TEST_TABLE: ${self:custom.tableName}
+    BUCKET_NAME: ${self:custom.bucketName}
+    APP_NAME: ${self:app}
+
+functions:
+  insertIntoDb:
+    handler: objects.insertIntoDb
+    memorySize: 512
+
+resources:
+  Resources:
+    InputBucket:
+      Type: 'AWS::S3::Bucket'
+      DeletionPolicy: 'Retain'
+      Properties:
+        BucketName: ${self:app}-${self:custom.bucketName}
+    TestDynamoDBTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: userId
+            AttributeType: S        
+        KeySchema:
+          -
+            AttributeName: userId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.tableName}
