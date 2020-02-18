@@ -1,6 +1,6 @@
 'use strict';
+
 const aws = require('aws-sdk');
-const config = require('../config.json');
 let lambda, env, APP_NAME, BUCKET_NAME;
 
 class BucketConfigurationPlugin {
@@ -21,8 +21,6 @@ class BucketConfigurationPlugin {
     };
 
     aws.config.update({
-      accessKeyId: config.aws.accessKey,
-      secretAccessKey: config.aws.secretKey,
       region: 'us-east-1'    
     });  
     

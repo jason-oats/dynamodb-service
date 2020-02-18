@@ -1,6 +1,6 @@
 'use strict';
+
 const aws = require('aws-sdk');
-const config = require('../config.json');
 let env, APP_NAME, BUCKET_NAME, TABLE_NAME, lambda, s3;
 
 class DynamoDbServicePlugin {
@@ -22,9 +22,8 @@ class DynamoDbServicePlugin {
       'copyData:formattingObjects': formattingObjects.bind(null, serverless, options),
       'copyData:insertIntoDb': insertIntoDb.bind(null, serverless, options)
     };
+
     aws.config.update({
-      accessKeyId: config.aws.accessKey,
-      secretAccessKey: config.aws.secretKey,
       region: 'us-east-1'    
     });  
     
