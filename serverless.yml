@@ -46,9 +46,9 @@ provider:
       Resource:
         - { "Fn::GetAtt": [ "InputQueue", "Arn" ] }
   environment:
-    TABLE_NAME: ${self:custom.tableName}
-    BUCKET_NAME: ${self:custom.bucketName}
     APP_NAME: ${self:app}
+    TABLE_NAME: ${self:app}-${self:custom.tableName}
+    BUCKET_NAME: ${self:custom.bucketName}
     INPUT_QUEUE_NAME: ${self:custom.inputQueueName}
     INPUT_TOPIC_NAME: ${self:custom.inputTopicName}
     INPUT_TOPIC_ARN: { "Ref": "InputTopic" }
@@ -60,6 +60,7 @@ functions:
     memorySize: 512
   configureBucket:
     handler: notifications.configureBucket
+    memorySize: 512
 
 resources:
   Resources:
@@ -117,7 +118,7 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-        TableName: ${self:custom.tableName}
+        TableName: ${self:app}-${self:custom.tableName}
     InputQueue:
       Type: AWS::SQS::Queue
       Properties:
