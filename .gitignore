@@ -7,3 +7,6 @@ jspm_packages
 
 # Config files
 config.json
+
+# Misc. files
+todo.txt
