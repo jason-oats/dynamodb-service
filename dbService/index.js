@@ -40,7 +40,7 @@ const setup = (serverless) => {
 }
 
 
-const getList = (serverless, options) => new Promise((resolve, reject) => {
+const getList = (serverless) => new Promise((resolve, reject) => {
   serverless.cli.log('Getting list...');
 
   s3.listObjectsV2({
@@ -56,7 +56,7 @@ const getList = (serverless, options) => new Promise((resolve, reject) => {
   });    
 });
 
-const getObjects = (serverless, options) => new Promise((resolve, reject) => {
+const getObjects = (serverless) => new Promise((resolve, reject) => {
   serverless.cli.log('Getting objects...');
 
   s3.getObject({
@@ -77,7 +77,7 @@ const getLastKey = (objects) => {
   return objects[0].Key;
 };
 
-const formattingObjects = (serverless, options) => {
+const formattingObjects = (serverless) => {
   serverless.cli.log('Formatting objects...');
   
   const dataArray = JSON.parse(serverless.variables.data.Body.toString());
@@ -98,7 +98,7 @@ const formattingObjects = (serverless, options) => {
   serverless.variables.data = formattedData;
 };
 
-const insertIntoDb = (serverless, options) => new Promise((resolve, reject) => {
+const insertIntoDb = (serverless) => new Promise((resolve, reject) => {
   serverless.cli.log('Inserting objects...');
 
   const payload = {

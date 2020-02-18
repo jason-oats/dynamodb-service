@@ -1,7 +1,7 @@
 const aws = require('aws-sdk');
 const s3 = new aws.S3();
 
-module.exports.configureBucket = (event, context, callback) => {
+module.exports.configureBucket = (event, _context, callback) => {
     const params = {
         Bucket: event.bucketName,
         NotificationConfiguration: {

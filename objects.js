@@ -1,7 +1,7 @@
 const aws = require('aws-sdk');
 const dynamoDb = new aws.DynamoDB.DocumentClient({ region: 'us-east-1' });
 
-module.exports.insertIntoDb = (event, context, callback) => {
+module.exports.insertIntoDb = (event, _context, callback) => {
   const params = {
     RequestItems: {}
   };

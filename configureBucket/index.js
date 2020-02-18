@@ -34,7 +34,7 @@ const setup = (serverless) => {
   BUCKET_NAME = `${APP_NAME}-${env.BUCKET_NAME}`;
 }
 
-const configureBucket = (serverless, options) => new Promise((resolve, reject) => {
+const configureBucket = (serverless) => new Promise((resolve, reject) => {
   serverless.cli.log('Configuring bucket...');
 
   const payload = {
