@@ -6,12 +6,16 @@ org: jasonoats
 plugins:
   localPath: './'
   modules:
-    - index.js
+    - dbService
+    - configureBucket
     - serverless-s3-deploy
 
 custom:
   tableName: users-table
   bucketName: input-data
+  inputQueueName: input-queue
+  inputTopicName: input-topic
+  region: us-east-1
   assets:
     auto: true
     targets:
@@ -24,39 +28,82 @@ custom:
 provider:
   name: aws
   runtime: nodejs12.x
-  region: us-east-1
+  region: ${self:custom.region}
   iamRoleStatements:
     - Effect: Allow
       Action:
-        - dynamodb:Query
-        - dynamodb:Scan
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:DeleteItem
-        - dynamodb:BatchWrite
         - dynamodb:BatchWriteItem
       Resource:
-        - { "Fn::GetAtt": ["TestDynamoDBTable", "Arn" ] }
+        - { "Fn::GetAtt": [ "DynamoDBTable", "Arn" ] }
+    - Effect: Allow
+      Action:
+        - s3:PutBucketNotification
+      Resource:
+        - { "Fn::GetAtt": [ "InputBucket", "Arn" ] }
+    - Effect: Allow
+      Action:
+        - SQS:SendMessage
+      Resource:
+        - { "Fn::GetAtt": [ "NewInputQueue", "Arn" ] }
   environment:
-    TEST_TABLE: ${self:custom.tableName}
+    TABLE_NAME: ${self:custom.tableName}
     BUCKET_NAME: ${self:custom.bucketName}
     APP_NAME: ${self:app}
+    INPUT_QUEUE_NAME: ${self:custom.inputQueueName}
+    INPUT_TOPIC_NAME: ${self:custom.inputTopicName}
+    INPUT_TOPIC_ARN: { "Ref": "InputTopic" }
+    REGION: ${self:custom.region}
 
 functions:
   insertIntoDb:
     handler: objects.insertIntoDb
     memorySize: 512
+  configureBucket:
+    handler: notifications.configureBucket
 
 resources:
   Resources:
     InputBucket:
-      Type: 'AWS::S3::Bucket'
+      Type: AWS::S3::Bucket
       DeletionPolicy: 'Retain'
       Properties:
         BucketName: ${self:app}-${self:custom.bucketName}
-    TestDynamoDBTable:
-      Type: 'AWS::DynamoDB::Table'
+    InputBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+          PolicyDocument:
+            Statement:
+              Effect: Allow
+              Principal: 
+                Service: lambda.amazonaws.com
+              Action: s3:PutBucketNotification
+              Resource: arn:aws:s3:::${self:app}-${self:custom.bucketName}
+          Bucket: ${self:app}-${self:custom.bucketName}
+    InputTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:app}-${self:custom.inputTopicName}
+    InputTopicSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Protocol: sqs
+        Endpoint: !GetAtt NewInputQueue.Arn
+        TopicArn: !Ref InputTopic
+    InputTopicPolicy:
+      Type: AWS::SNS::TopicPolicy
+      Properties:
+        PolicyDocument:
+          Statement:
+          - Sid: AllowBucketToPushNotificationEffect
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: sns:Publish
+            Resource: "*"
+        Topics:
+        - Ref: InputTopic
+    DynamoDBTable:
+      Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
           -
@@ -70,3 +117,22 @@ resources:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
         TableName: ${self:custom.tableName}
+    NewInputQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:app}-${self:custom.inputQueueName}
+    NewInputQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+          PolicyDocument:
+            # Statement: ${file(./defaultQueuePolicy.json)}
+            Statement:
+              Effect: "Allow"
+              Principal: "*"
+              Action: "SQS:SendMessage"
+              Resource: "arn:aws:sqs:${self:custom.region}:*:${self:app}-${self:custom.inputQueueName}"
+              Condition:
+                StringLike:
+                  "aws:SourceArn": "arn:aws:sns:${self:custom.region}:*:${self:app}-${self:custom.inputTopicName}"
+          Queues:
+          - Ref: NewInputQueue  
