@@ -44,7 +44,7 @@ provider:
       Action:
         - SQS:SendMessage
       Resource:
-        - { "Fn::GetAtt": [ "NewInputQueue", "Arn" ] }
+        - { "Fn::GetAtt": [ "InputQueue", "Arn" ] }
   environment:
     TABLE_NAME: ${self:custom.tableName}
     BUCKET_NAME: ${self:custom.bucketName}
@@ -77,8 +77,8 @@ resources:
               Principal: 
                 Service: lambda.amazonaws.com
               Action: s3:PutBucketNotification
-              Resource: arn:aws:s3:::${self:app}-${self:custom.bucketName}
-          Bucket: ${self:app}-${self:custom.bucketName}
+              Resource: !GetAtt InputBucket.Arn
+          Bucket: !Ref InputBucket
     InputTopic:
       Type: AWS::SNS::Topic
       Properties:
@@ -87,19 +87,20 @@ resources:
       Type: AWS::SNS::Subscription
       Properties:
         Protocol: sqs
-        Endpoint: !GetAtt NewInputQueue.Arn
+        Endpoint: !GetAtt InputQueue.Arn
         TopicArn: !Ref InputTopic
     InputTopicPolicy:
       Type: AWS::SNS::TopicPolicy
       Properties:
         PolicyDocument:
           Statement:
-          - Sid: AllowBucketToPushNotificationEffect
             Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
+            Principal: "*"
             Action: sns:Publish
-            Resource: "*"
+            Resource: !Ref InputTopic
+            Condition:
+              StringEquals:
+                "aws:SourceArn": !GetAtt InputBucket.Arn
         Topics:
         - Ref: InputTopic
     DynamoDBTable:
@@ -117,22 +118,21 @@ resources:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
         TableName: ${self:custom.tableName}
-    NewInputQueue:
+    InputQueue:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:app}-${self:custom.inputQueueName}
-    NewInputQueuePolicy:
+    InputQueuePolicy:
       Type: AWS::SQS::QueuePolicy
       Properties:
           PolicyDocument:
-            # Statement: ${file(./defaultQueuePolicy.json)}
             Statement:
-              Effect: "Allow"
+              Effect: Allow
               Principal: "*"
-              Action: "SQS:SendMessage"
-              Resource: "arn:aws:sqs:${self:custom.region}:*:${self:app}-${self:custom.inputQueueName}"
+              Action: sqs:SendMessage
+              Resource: !GetAtt InputQueue.Arn
               Condition:
-                StringLike:
-                  "aws:SourceArn": "arn:aws:sns:${self:custom.region}:*:${self:app}-${self:custom.inputTopicName}"
+                StringEquals:
+                  "aws:SourceArn": !Ref InputTopic
           Queues:
-          - Ref: NewInputQueue  
+          - Ref: InputQueue  
