@@ -1,6 +1,5 @@
-
-service: dynamodb-service
-app: dynamodb-service
+service: newservice
+app: newservice
 org: jasonoats
 
 plugins:
@@ -45,11 +44,17 @@ provider:
         - SQS:SendMessage
       Resource:
         - { "Fn::GetAtt": [ "InputQueue", "Arn" ] }
+    - Effect: Allow
+      Action:
+        - SQS:SendMessage
+      Resource:
+        - { "Fn::GetAtt": [ "FilenameQueue", "Arn" ] }
   environment:
     APP_NAME: ${self:app}
     TABLE_NAME: ${self:app}-${self:custom.tableName}
     BUCKET_NAME: ${self:custom.bucketName}
-    INPUT_QUEUE_NAME: ${self:custom.inputQueueName}
+    INPUT_QUEUE_URL: { "Ref": "InputQueue" }
+    FILENAME_QUEUE_URL: { "Ref": "FilenameQueue" }
     INPUT_TOPIC_NAME: ${self:custom.inputTopicName}
     INPUT_TOPIC_ARN: { "Ref": "InputTopic" }
     REGION: ${self:custom.region}
@@ -61,6 +66,27 @@ functions:
   configureBucket:
     handler: notifications.configureBucket
     memorySize: 512
+  handleInputNotification:
+    dependson: 
+      arn:
+        Fn::GetAtt:
+          - InputQueue
+          - Arn 
+    handler: messages.handleInputNotification
+    events:
+      - sqs: 
+          arn:
+            Fn::GetAtt:
+              - InputQueue
+              - Arn
+  processFiles:
+    handler: messages.processFiles
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - FilenameQueue
+              - Arn
 
 resources:
   Resources:
@@ -136,4 +162,6 @@ resources:
                 StringEquals:
                   "aws:SourceArn": !Ref InputTopic
           Queues:
-          - Ref: InputQueue  
+          - Ref: InputQueue
+    FilenameQueue:
+      Type: AWS::SQS::Queue
