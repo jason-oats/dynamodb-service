@@ -5,6 +5,7 @@ org: jasonoats
 plugins:
   localPath: './'
   modules:
+    - serverless-plugin-scripts
     - dbService
     - configureBucket
     - serverless-s3-deploy
@@ -23,6 +24,10 @@ custom:
         files:
           - source: ./
             globs: 'generated.json'
+  scripts:
+    hooks:
+      after:deploy:finalize: serverless copyData
+      after:copyData:insertIntoDb: serverless configureBucket
 
 provider:
   name: aws
