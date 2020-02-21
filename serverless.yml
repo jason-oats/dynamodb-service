@@ -1,20 +1,22 @@
-service: newservice
-app: newservice
+service: my-new-app
+app: my-new-app
 org: jasonoats
 
 plugins:
-  localPath: './'
+  localPath: ./
   modules:
     - serverless-plugin-scripts
-    - dbService
-    - configureBucket
     - serverless-s3-deploy
-
+    - configureBucket
+    - dbService
+    - getFilenameFromSQS
+    - serverless-cloudside-plugin
 custom:
   tableName: users-table
   bucketName: input-data
   inputQueueName: input-queue
   inputTopicName: input-topic
+  filenameQueueName: filename-queue
   region: us-east-1
   assets:
     auto: true
@@ -26,8 +28,8 @@ custom:
             globs: 'generated.json'
   scripts:
     hooks:
-      after:deploy:finalize: serverless copyData
-      after:copyData:insertIntoDb: serverless configureBucket
+      after:deploy:finalize: serverless configureBucket
+      # after:getFilename:getFilename: serverless copyData -u
 
 provider:
   name: aws
@@ -60,6 +62,7 @@ provider:
     BUCKET_NAME: ${self:custom.bucketName}
     INPUT_QUEUE_URL: { "Ref": "InputQueue" }
     FILENAME_QUEUE_URL: { "Ref": "FilenameQueue" }
+    FILENAME_QUEUE: ${self:custom.filenameQueueName}
     INPUT_TOPIC_NAME: ${self:custom.inputTopicName}
     INPUT_TOPIC_ARN: { "Ref": "InputTopic" }
     REGION: ${self:custom.region}
@@ -86,12 +89,12 @@ functions:
               - Arn
   processFiles:
     handler: messages.processFiles
-    events:
-      - sqs:
-          arn:
-            Fn::GetAtt:
-              - FilenameQueue
-              - Arn
+    # events:
+    #   - sqs:
+    #       arn:
+    #         Fn::GetAtt:
+    #           - FilenameQueue
+    #           - Arn
 
 resources:
   Resources:
@@ -170,3 +173,5 @@ resources:
           - Ref: InputQueue
     FilenameQueue:
       Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:app}-${self:custom.filenameQueueName}
