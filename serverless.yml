@@ -29,7 +29,6 @@ custom:
   scripts:
     hooks:
       after:deploy:finalize: serverless configureBucket
-      # after:getFilename:getFilename: serverless copyData -u
 
 provider:
   name: aws
