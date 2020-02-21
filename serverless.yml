@@ -1,5 +1,5 @@
-service: my-new-app
-app: my-new-app
+service: vf-app
+app: vf-app
 org: jasonoats
 
 plugins:
@@ -9,7 +9,6 @@ plugins:
     - serverless-s3-deploy
     - configureBucket
     - dbService
-    - getFilenameFromSQS
     - serverless-cloudside-plugin
 custom:
   tableName: users-table
@@ -69,10 +68,10 @@ provider:
 functions:
   insertIntoDb:
     handler: objects.insertIntoDb
-    memorySize: 512
+    memorySize: 256
   configureBucket:
     handler: notifications.configureBucket
-    memorySize: 512
+    memorySize: 256
   handleInputNotification:
     dependson: 
       arn:
@@ -80,6 +79,7 @@ functions:
           - InputQueue
           - Arn 
     handler: messages.handleInputNotification
+    memorySize: 256
     events:
       - sqs: 
           arn:
@@ -88,12 +88,13 @@ functions:
               - Arn
   processFiles:
     handler: messages.processFiles
-    # events:
-    #   - sqs:
-    #       arn:
-    #         Fn::GetAtt:
-    #           - FilenameQueue
-    #           - Arn
+    memorySize: 256
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - FilenameQueue
+              - Arn
 
 resources:
   Resources:
